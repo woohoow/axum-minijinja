@@ -1,6 +1,9 @@
+use argh::FromArgs;
 use axum::{response::Html, routing::get, Router};
+use csv::Reader;
 use minijinja::{path_loader, Environment};
 use std::collections::HashMap;
+use std::fs::File;
 
 async fn index() -> Result<Html<String>, Html<String>> {
     // Create a Minijinja environment and set up a loader
@@ -25,12 +28,41 @@ async fn index() -> Result<Html<String>, Html<String>> {
     Ok(Html(rendered))
 }
 
+fn read_csv_file(file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let file = File::open(file_path)?;
+    let mut rdr = Reader::from_reader(file);
+
+    for result in rdr.records() {
+        let record = result?;
+        // Process CSV record
+        println!("{:?}", record);
+    }
+
+    Ok(())
+}
+
+#[derive(FromArgs)]
+/// Axum Web Server with CSV Parser
+struct Args {
+    #[argh(option, short = 'c', long = "csv")]
+    /// CSV file to parse
+    csv_file: Option<String>,
+}
+
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/", get(index));
+    let args: Args = argh::from_env();
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    if let Some(csv_file) = args.csv_file {
+        if let Err(err) = read_csv_file(&csv_file) {
+            eprintln!("Error parsing CSV file: {:?}", err);
+        }
+    } else {
+        let app = Router::new().route("/", get(index));
+
+        axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    }
 }
