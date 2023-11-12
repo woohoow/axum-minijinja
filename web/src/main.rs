@@ -47,6 +47,10 @@ struct Args {
     #[argh(option, short = 'c', long = "csv")]
     /// CSV file to parse
     csv_file: Option<String>,
+
+    #[argh(switch, short = 'r', long = "runserver")]
+    /// run the Axum server
+    run_server: bool,
 }
 
 #[tokio::main]
@@ -57,7 +61,9 @@ async fn main() {
         if let Err(err) = read_csv_file(&csv_file) {
             eprintln!("Error parsing CSV file: {:?}", err);
         }
-    } else {
+    }
+
+    if args.run_server {
         let app = Router::new().route("/", get(index));
 
         axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
